@@ -940,7 +940,7 @@ lines) for all count levels.
 % \subsubsection{Additive effects}
 
 % latex table generated in R 3.2.3 by xtable 1.8-0 package
-% Tue Jan  5 15:23:02 2016
+% Tue Jan  5 15:29:14 2016
 \begin{table}[t]
 \centering
 \caption{Individual repeatability coefficients ($2.8\sigma_m^2$) for the 17 different raters.} 
@@ -1058,3 +1058,165 @@ consumers to agree on the chocolate quality for any brand.
 % where the \code{random.raters} argument is set to \code{TRUE} in
 % order to consider methods/raters as random effects instead of fixed
 % effects:
+% XXXX skal det her med igen?
+% What is printed by the last command is merely the estimated variance
+% components using the model where the conversion between methods have
+% intercept is 0 and slope 1. 
+
+% is stored in the \code{LoA} element returned by
+% \code{BA.est}, so the limits are (which we save for later use)
+
+The limits of agreement between two random consumers is
+6.66. In other words there is a
+95\% probability that two randomly selected consumers differ less than
+6.7 points in their assessment
+of the score of a chocolate. Since the scores range from zero to ten
+the limits of agreement must be said to be very wide.
+
+
+% \subsubsection{Repeatability}
+
+
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{choco-choco-vars}
+\caption{Individual repeatibility coefficients for the chocolate data.}
+\label{fig:choco-vars}
+\end{figure}
+
+
+Figure~\ref{fig:choco-vars} shows the estimated individual residual
+standard deviation for each rater and it is clear that there is a
+substantial heterogeneity in the individual variances. Essentially we
+could compute the repeatability using
+\eqref{repeatability-coefficient} if we assume exchangeability, but
+since we have no actual replicates of measurements on the same item in
+this dataset we refrain from computing it.
+
+
+
+
+\section{Discussion}
+%Often it is of interest to assess the similarity between different
+%methods of measurement, and when measurements
+%are taken with different methods we wish to determine whether the methods
+%agree with one another, or rather, quantify the degree of disagreement
+%in order to be able to make an informed substantive judgment.
+
+In this paper we have extended the modeling approach of
+\citet{Carstensen.2008b} to address the question of precision when the
+methods represent a random sample of observers (raters) that are asked
+to produce a measurement. In a sense this is analogous to the binary
+case that was considered in \citet{fleiss:etal:2004}.  Our extension
+incorporates the methods as random effects in the model and in that
+vein, the prediction of the difference between measurements by two
+random raters on a future item will inevitably be a prediction that
+has zero mean, and where only the variation between and within raters
+is involved. The proposed modeling approach can handle individual
+skills of the raters as well as it accommodates designs where not
+every rater necessarily needs to assess every item.
+
+The calculation of the limits of agreement relies on the law of total
+variance so it should be noted that the approximations used may be
+rather crude when the number of available raters is small. It should
+be emphasized that predictions of differences between future randomly
+chosen raters is highly dependent on the assumption that the sample at
+hand is actually representative and that there is no way to test this
+assumption.
+
+\citet{Choud2008} presents the methodology for computing limits of
+agreement based on tolerance intervals instead of the traditional
+prediction intervals that we also use here. Tolerance intervals are
+more desirable for limits of agreement than prediction intervals
+because we can attach a confidence level to the prediction interval so
+we have better control over the actual coverage level instead of just
+an average asymptotic level.  \citet{Bland:Altman.1999} also suggest
+to use tolerance limits for limits of agreement with small sample
+sizes. The prediction and tolerance intervals will be identical when
+the number of observations increases so the benefit of the tolerance
+interval is largest for small samples. There are two reasons that we
+do not consider tolerance intervals in this manuscript. First we need
+large samples anyway to obtain useful estimates of the variance
+components in model \eqref{mod-linked}.  Second, in order to obtain
+tolerance intervals --- even for small samples --- a double bootstrap
+approach is needed for the computations. Unless the experimental
+design is balanced a lot of extra assumptions on resampling units and
+exchangeability is needed for the bootstrap approach to be
+valid. Tolerance intervals are preferred, but we use the prediction
+intervals since we have already made the implicit assumption that we
+have a sufficiently large sample for the estimates to be useful
+through prediction intervals.
+
+
+%% The empirical mean of rater variances used in \eqref{approximation} is
+%% obviously a good estimator of the theoretical mean variance when the
+%% number of available raters is large. For smaller number of raters one
+%% might be inclined to use a more robust estimator of the central
+%% tendency as for example the median.  However, while the mean and the
+%% median will give the same results if the distribution of rater
+%% variances is symmetric, the two summary measures will differ when the
+%% distribution of the residual variances is asymmetric. Since we seek to
+%% estimate the mean of the distribution of residual variances, we would
+%% introduce a bias in our computations and the bias will persist even if
+%% the number of raters increases.
+
+%% \SweaveInput{median}
+
+%% As an example, consider a situation with two types of raters: those
+%% with high precision (small variance) and those with low precision
+%% (large variance) and assume the two types of raters are represented in
+%% the population at a ratio of 3:1, say. Then the median will match the
+%% variance of the most prevalent group and will consistently provide a
+%% wrong estimate of the mean within-rater variance.
+
+%% This problem is illustrated in Figure~\ref{fig:dists} where we have
+%% simulated data using three different distributions for the residual
+%% variances within raters: a uniform distribution, a skewed distribution and a
+%% bimodal distribution. For each distribution we have looked at
+%% scenarios where an increasing number of raters are randomly selected
+%% from a population, and for each scenario made 500 simulated selections
+%% from the distribution of rater-variances.
+%% %
+%% We have shown the distribution of 500 simulated means and medians of
+%% the rater variances for different sizes of the random sample of raters
+%% (2--40). The distributions are shown using the 2.5, 50 and 97.5\%
+%% quantiles of the simulated means of variances.
+
+%% The uniform distribution is symmetric and the mean and median produce
+%% similar results. For the skewed distribution we get unbiased estimates
+%% for the mean but biased (albeit more precise) estimates for the
+%% median. For the bimodal distribution we get a consistent bias for the
+%% median, which clearly underestimates the true mean. It is an
+%% \emph{under}estimate because the largest chunk of the variances are
+%% the smaller ones. There are two noticeable drops in the upper limits
+%% of the quantiles for the median estimates for the bimodal distribution
+%% between 8 and 10 raters and between 16 and 18 raters. These marked
+%% drops are artifacts due to the combination of applying the median
+%% together with a bimodal distribution. There are essentially two types
+%% of raters, and when the number of raters is low we may sometimes ---
+%% simply due to random sampling --- obtain the majority of observations
+%% from groups with the largest variance. When the number of raters
+%% increases, the probability of having the majority of raters from the
+%% smallest falls below 2.5\% and the bands stabilizes.
+
+%% Hence, the mean is still preferable as an estimator to more classical
+%% robust measures like the median. But 
+
+
+% \clearpage
+
+\nocite{R}
+%\nocite{Epi}
+%\nocite{lattice}
+\nocite{MethComp}
+
+
+%\bibliographystyle{wileyj}
+\bibliographystyle{imsart-nameyear}
+\bibliography{localrefs}
+
+% \listoffigures
+
+
+
+\end{document}
