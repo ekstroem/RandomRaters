@@ -1,0 +1,201 @@
+\SweaveOpts{include=FALSE,keep.source=TRUE,eps=FALSE,results=hide,prefix.string=median}
+
+<<dists,fig=TRUE,echo=FALSE>>=
+library("gplots")
+
+# No. metodes/raters in the population
+maxraters <- 4000
+# No. of simulated samples of raters from the population
+nsim <- 500
+
+
+# Array to hold the distributions of rater variances - 3 different types
+dnam <- list( raters = 1:maxraters,
+                dist = c("unif","skew","bimod") )
+sigma2 <- array( NA, dimnames=dnam, dim=sapply(dnam,length) )
+str( sigma2 )
+
+# An array to hold the results from the simulations
+dnam <- list( dist = c("unif","skew","bimod"),
+              summ = c("mean","median"),
+              nrat = seq(2,40,2),
+              nsim = 1:nsim )
+sres <- array( NA, dimnames=dnam, dim=sapply(dnam,length) )
+str( sres )
+
+# Simulate rater variances normalize the distribution of the VARIANCES
+# in order to make distributions comparable
+s2 <- runif(maxraters, min=0.5, max=5)
+sigma2[,"unif"] <- s2 / sd(s2)
+
+s2 <- exp(runif(maxraters, min=2.5, max=7.5))
+sigma2[,"skew"] <- s2 / sd(s2)
+
+s2 <- c(rnorm(maxraters*3/4, mean= 4, sd=1),
+        rnorm(maxraters*1/4, mean=15, sd=1))
+sigma2[,"bimod"] <- abs(s2) / sd(s2)
+
+# Summarize
+for( ir in dimnames(sres)[["nrat"]] )
+{
+nm <- as.numeric( ir )
+for( id in dimnames(sigma2)[["dist"]] )
+{
+sres[id,"mean"  ,ir,] <- sapply( 1:nsim, function(i) mean  (sample(sigma2[,id], nm, replace=TRUE)) )
+sres[id,"median",ir,] <- sapply( 1:nsim, function(i) median(sample(sigma2[,id], nm, replace=TRUE)) )
+}
+}
+str( sres )
+
+# Compute the quantiles
+pres <- apply( sres, 1:3, quantile, probs=c(25,500,975)/1000 )
+str( pres )
+
+
+# colors <- c("red", "blue")
+colors <- c("black", "darkgrey")
+# colors <- gray(c(0, 60)/100)
+
+
+# plot the resulting distributins of the Mena/Median
+par( bty="n", mar=c(3,3,1,1), mgp=c(3,1,0)/1.6 )
+layout(matrix(1:6, ncol=2, byrow=FALSE), widths=c(3,7))
+
+# Histograms of rater distributions
+xl <- ceiling( max(sigma2) )
+for( id in dimnames(sigma2)[["dist"]] )
+{
+hist(sigma2[,id], main="", col="lightgray", ylab="", ylim=c(0,1750),
+     xlim=c(0,xl), breaks=seq(0,xl,0.2),
+     xlab=if( id=="bimod") expression(sigma[m]^2) )
+abline( v=  mean(sigma2[,id]), col=colors[1], lwd=2 )
+abline( v=median(sigma2[,id]), col=colors[2], lwd=2 )
+}
+
+# Here are the plots of the distributions
+yl <- c(0,max(pres))
+
+for( id in dimnames(pres)[[2]] )
+{
+for( it in dimnames(pres)[[3]] )
+{
+plotCI( 1:(dim(pres)[4])+0.1*c(-1,1)[1+(it=="median")],
+               pres[  "50%",id,it,],
+          li = pres[ "2.5%",id,it,],
+          ui = pres["97.5%",id,it,],
+        xlab="", xaxt="n", ylab="",
+        lwd=2, ylim=yl, col=colors[1+(it=="median")], lty=1,
+        pch=21, pt.bg=par("bg"), gap=0.3, sfrac=1/200,
+        add=(it=="median") )
+abline( h = if(it=="median") median(sigma2[,id])
+                           else mean(sigma2[,id]),
+        col=colors[1+(it=="median")], lty="11" )
+}
+axis(1, 1:dim(pres)[4], dimnames(pres)[[4]])
+}
+@ %def
+\begin{figure}[tb]
+\centering
+  \includegraphics[width=.90\textwidth]{median-dists}
+  \caption{Different distributions for the variances (distribution
+    shown as histograms in the left panels) and corresponding
+    estimates (right panels) for the mean (black intervals) and the
+    median (gray intervals). The true mean variances are indicated by
+    the horizontal lines.}
+\label{fig:dists}
+\end{figure}
+
+% Why is the LoA not dependent on the 2nd order properties of the $\sigma_m$s?
+
+% So let us try it empirically. Suppose we use the median as estimator,
+% that is the term we use in the formula for the LoA above is basically
+% $2\times \median(\sigma_m)$.
+
+% So we simulate $\sigma_m$s from two different populations with the
+% same median, but different variances, sample say 1000 pairs
+% $(\sigma_m,\sigma_{m'})$, and then compare the distributions of
+% $\sqrt{\sigma_m^2+\sigma_{m'}^2}$ in the two scenarios.
+
+% So the simplest scenario is to choose the $\sigma_m$s to follow a
+% log-normal distribution with median 1 and different variances:
+% <<>>=
+% sig1 <- exp( rnorm( 1000, 0, 1 ) )
+% sig2 <- exp( rnorm( 1000, 0, 2 ) )
+% c( median( sig1 ), median( sig2 ) )
+% c( mean( sig1 ), mean( sig2 ) )
+% @
+% So far so good, medians are the same; now sample say 100 pairs
+% randomly from each of these and compute the contribution to the LoA
+% <<>>=
+% ix1 <- sample( 1:1000, 500, replace=T )
+% ix2 <- sample( 1:1000, 500, replace=T )
+% LoA.c1 <- sqrt( sig1[ix1]^2 + sig1[ix2]^2 )
+% LoA.c2 <- sqrt( sig2[ix1]^2 + sig2[ix2]^2 )
+% median( LoA.c1 )
+% median( LoA.c2 )
+% @
+% So here are now to samples
+% <<hist-logN, fig=TRUE, height=10>>=
+% mx <- 30
+% dx <- 0.5
+% par( mfrow=c(2,1), mar=c(3,3,1,1), mgp=c(3,1,0)/1.6 )
+% hist( pmin(LoA.c1,mx), breaks=seq(0,mx,dx), col="gray",
+%       main="", xlab="LoA-contribution", ylab="", ylim=c(0,100) )
+% abline( v=median( LoA.c1 ), col="red", lwd=2 )
+% abline( v=mean( LoA.c1 ), col="blue", lwd=2 )
+% rug( 1 )
+% hist( pmin(LoA.c2,mx), breaks=seq(0,mx,dx), col="gray",
+%       main="", xlab="LoA-contribution", ylab="", ylim=c(0,100) )
+% abline( v=median( LoA.c2 ), col="red", lwd=2 )
+% abline( v=mean( LoA.c2 ), col="blue", lwd=2 )
+% rug( 1 )
+% @
+% So now let us try to see if it hinges on the mean instead. So we
+% generate the SD as uniform over $5 \pm 2$ and $2 \pm 4.5$, and
+% repeat the same exercise:
+% <<>>=
+% sig1 <- runif( 1000, 3, 7 )
+% sig2 <- runif( 1000, 0.5, 9.5 )
+% c( median( sig1 ), median( sig2 ) )
+% c( mean( sig1 ), mean( sig2 ) )
+% @
+% <<>>=
+% ix1 <- sample( 1:1000, 500, replace=T )
+% ix2 <- sample( 1:1000, 500, replace=T )
+% LoA.c1 <- sqrt( sig1[ix1]^2 + sig1[ix2]^2 )
+% LoA.c2 <- sqrt( sig2[ix1]^2 + sig2[ix2]^2 )
+% median( LoA.c1 )
+% median( LoA.c2 )
+% @
+% So here are now to samples
+% <<hist-unif, fig=TRUE, height=10>>=
+% par( mfrow=c(2,1), mar=c(3,3,1,1), mgp=c(3,1,0)/1.6 )
+% hist( pmin(LoA.c1,mx), breaks=seq(0,mx,dx), col="gray",
+%       main="", xlab="LoA-contribution", ylab="", ylim=c(0,100) )
+% abline( v=median( LoA.c1 ), col="red", lwd=2 )
+% abline( v=mean( LoA.c1 ), col="blue", lwd=2 )
+% rug( 1 )
+% hist( pmin(LoA.c2,mx), breaks=seq(0,mx,dx), col="gray",
+%       main="", xlab="LoA-contribution", ylab="", ylim=c(0,100) )
+% abline( v=median( LoA.c2 ), col="red", lwd=2 )
+% abline( v=mean( LoA.c2 ), col="blue", lwd=2 )
+% rug( 1 )
+% @
+% \begin{figure}[tb]
+% \begin{center}
+%     \includegraphics[width=0.48\textwidth]{what-hist-logN}
+%     \includegraphics[width=0.48\textwidth]{what-hist-unif}
+% \end{center}
+% \caption{Distribution of the contribution to the LoA from two
+%   different distributions of SDs with different variances but similar
+%   medians (left, skewed distn), means (right, symmetric distn). The
+%   median contribution is marked in red, the mean in blue}
+% \label{fig:hist-logN}
+% \end{figure}
+% So it seems much more similar in the symmetric case. So basically the
+% use of the law of the total variance is applicable mostly in the
+% situation where the distribution is largely symmetric. If the
+% distribution of the rater-SDs is very skew any summary measure of the
+% SD estimates is likely biased. Hence we recommend using the median of
+% the estimated rater variances as a summary when computing LoA
+% incorporating random raters.

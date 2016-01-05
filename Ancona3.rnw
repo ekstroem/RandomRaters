@@ -1,0 +1,386 @@
+\SweaveOpts{results=verbatim,keep.source=TRUE,include=FALSE,eps=FALSE,prefix.string=Ancona}
+
+% \usepackage[utf8]{inputenc}
+
+
+<<echo=FALSE,results=hide>>=
+# options(width=75)
+@
+
+% \subsection{The dataset}
+Ten pictures of scattered points were generated, and the purpose of
+the exercise was to estimate the number of points in each picture
+after having viewed the picture for 5 seconds.  The number of points
+in each picture were between 24 and 120. Each picture were shown to
+the 17 raters three times (rotated and in random order to prevent
+recollection of the pictures), without telling them about the
+replication structure.  The dataset is available as the dataset
+\code{Ancona} (collected at a pre-confe\-rence course at the VIth
+conference of Societ\`{a} Italiana di Statistica Medica ed
+Epidemiologia Clinica (SISMEC) held in September 2011 in Ancona,
+Italy) found in the \pkg{MethComp} package for \R.
+
+<<echo=FALSE,results=hide>>=
+library("MethComp")
+data("Ancona")
+Ancona$rater <- factor(as.numeric(Ancona$rater))
+Ancona <- Meth(Ancona, meth = 1, y = 4)
+@
+
+
+
+We can get an overview of the data by plotting scores of the raters
+(and the replicates within raters) for each item (picture) as shown in
+Figure~\ref{fig:ancona-data}, separately for original scale and
+log-transformed data.  The plots in Figure~\ref{fig:ancona-data}
+provided pretty clear indications that a log-transform might provide a
+better fit to the data, since the variances are increasing for the
+analysis on the original scale, but largely stable for the
+log-transformed.
+
+<<xyplot-lin,fig=TRUE,height=5,width=9,echo=FALSE>>=
+library("Epi")
+library("lattice")
+clrs <- c("red", "forestgreen", "blue")  
+clrs <- gray.colors(3, start = 0, end = 0.7, alpha = NULL)
+syms <- 16:18
+tm <- with(Ancona, tapply(log(y), meth, mean))
+Ancona$meth <- Relevel(Ancona$meth, names(sort(tm)))
+print(
+  xyplot(y ~ meth | item, data = Ancona,
+         col = clrs,
+         ylab = "Score", xlab = "Rater", pch = syms, group = repl,
+         scales = list(x = list(draw = FALSE)),
+         par.settings = list(strip.background = list(col = gray(0.95))),
+         layout = c(5, 2),
+         panel = panel.superpose,
+         panel.groups = function(x, y, ..., lty, lwd, col.line)
+         {
+           panel.xyplot(x, y, ..., lty = lty)
+           panel.abline(h = mean(y), lty = 1, ...)
+           panel.abline(h = sort(as.numeric(levels(Ancona$item)))[panel.number()],
+                        lty = "11", lwd = 3, col.line = gray(0.5), ...)
+         }
+        )
+     )
+@
+<<xyplot-log,fig=TRUE,height=5,width=9,echo=FALSE>>=
+uuu <- as.numeric(levels(Ancona$item))[Ancona$item]
+xxx <- sort(unique(uuu))
+newpanelheaders <- paste("log(", xxx, ") = ", round(log(xxx), 2))
+print(
+  xyplot(log(y) ~ meth | item, data=Ancona,
+         strip=strip.custom(factor.levels=newpanelheaders),
+         col = clrs,
+         ylab = "log-Score", xlab = "Rater", pch = syms, group = repl,
+         scales = list(x=list(draw = FALSE)),
+         par.settings = list(strip.background = list(col = gray(0.95))),
+         layout = c(5,2),
+         panel = panel.superpose,
+         panel.groups = function(x, y, ..., lty, lwd, col.line)
+         {
+           panel.xyplot(x, y, ..., lty = lty)
+           panel.abline(h = mean(y), lty = 1, ...)
+           panel.abline(h = log(sort(as.numeric(levels(Ancona$item)))[panel.number()]),
+                        lty = "11", lwd = 3, col.line = gray(0.5), ...)
+         }
+         )
+      )
+@
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{Ancona-xyplot-lin}
+\includegraphics[width=0.9\textwidth]{Ancona-xyplot-log}
+\caption{Illustration of the Ancona data. Each panel shows a specific
+  item and the columns of dots within each panel represent the scores
+  given by each rater (with the true number of points listed above
+  each panel). The symbols/colouring corresponds to replicates (with
+  circles, triangles, and diamonds corresponding to first to third
+  replicate, respectively). Raters are listed in the same order within
+  all panels and are sorted according to their average log-score
+  across all items and replicates. The upper graph shows counts on the
+  original scale, the lower after log-transform. It appears that
+  variances are reasonably homogeneous in the lower panels, but not in
+  the upper. The solid horizontal lines correspond to the mean score
+  within replicates, the dashed line to the true number of points.}
+\label{fig:ancona-data}
+\end{figure}
+
+% We can get estimates of the variance components using the
+% \code{BA.est} function on the \code{Meth} object \code{Ancona},
+% where the \code{random.raters} argument is set to \code{TRUE} in
+% order to consider methods/raters as random effects instead of fixed
+% effects:
+<<echo=FALSE,results=hide>>=
+RR <- BA.est(Ancona, linked = TRUE, random.raters = TRUE)
+RR
+@ %def
+% XXXX skal det her med igen?
+% What is printed by the last command is merely the estimated variance
+% components using the model where the conversion between methods have
+% intercept is 0 and slope 1. 
+
+% is stored in the \code{LoA} element returned by
+% \code{BA.est}, so the limits are (which we save for later use)
+<<echo=FALSE,results=hide>>=
+RR$LoA
+LoA.mn <- RR$LoA[, 3]
+@
+
+Using formula \eqref{eq:LoA-linked} we get that the limits of agreement between two
+random raters is $\pm$\Sexpr{formatC(LoA.mn,format="f",digits=2)}, thus
+there is a 95\% probability that two randomly selected raters differ
+less than \Sexpr{formatC(LoA.mn,format="f",digits=0)} points in their
+assessment --- not impressive since the range of values are from 24 to
+120.
+
+
+
+% If we wish to use the median of the variance components instead of the
+% mean to get a more robust estimate of the limits of agreement then we
+% have to extract the median of the relevant variance components and
+% use them together with formula \eqref{eq:LoA-linked}. We also make the
+% computations using the mean, illustrating the calculation of the LoA
+% embedded in \texttt{BA.est}:
+% <<>>=
+% ( RRmd <- apply( RR$VarComp, 2, median ) )
+% sqmean <- function( x ) sqrt(mean(x^2))
+% ( RRmn <- apply( RR$VarComp, 2, sqmean ) )
+% @ %def
+% According to formula \eqref{eq:LoA-linked} we get the LoA as plus/minus:
+% <<>>=
+% ( LoA.md <- 2 * sqrt( 2 * ( RRmd["M"  ]^2 +
+%                             RRmd["MxI"]^2 +
+%                             RRmd["res"]^2 ) ) )
+% ( LoA.mn<- 2 * sqrt( 2 * ( RRmn["M"  ]^2 +
+%                             RRmn["MxI"]^2 +
+%                             RRmn["res"]^2 ) ) )
+% @ %def
+% We get slightly smaller limits of agreement when we use the
+% median of the estimated variance components instead of the mean.
+
+% \subsubsection{Log-transformed data}
+
+%This can be visualized by using the \code{DA.reg} function to make
+%regressions of the averages on the means (assuming intercept and slope
+%to be 0, thus essentially looking at the differences within all pairs
+%of raters).
+%<<trsf,fig=TRUE,height=5,width=10>>=
+%par(mfrow = c(1, 2), mar = c(3, 3, 1, 1), mgp = c(3, 1, 0) / 1.6)
+%oo <- DA.reg(Ancona, random.raters = TRUE)
+%ll <- DA.reg(Ancona, random.raters = TRUE, Transform = "log")
+%
+%lims <- range(c(oo$Conv[, , "slope(sd)"], ll$Conv[, , "slope(sd)"]), na.rm = TRUE)
+%plot(oo$Conv[, , "slope(sd)"], ll$Conv[, , "slope(sd)"],
+%     pch = 16, xlim = lims, ylim = lims,
+%     xlab = "original", ylab = "log-transformed")
+%mtext("Slope of SD vs. mean", side = 3, line = 0.2)
+%abline(h = 0, v = 0)
+%
+%plot(oo$Conv[, , "sd=K"], ll$Conv[, , "sd=K"],
+%     pch = 16, xlim = 0:1, ylim = 0:1,
+%     xlab = "original", ylab = "log-transformed")
+%mtext("P-value for constant SD", side = 3, line = 0.2)
+%@
+%\begin{figure}[tb]
+%  \centering
+%  \includegraphics[width=0.98\textwidth]{Ancona-trsf}
+%  \caption{Checking the effect of transformation. Left panel: Slopes
+%    of the regression of SD on averages. Right
+%    panel $p$-values of $H_0: \text{slope}=0$ for the regression.}
+%\label{fig:trsf}
+%\end{figure}
+%From Figure \ref{fig:trsf} it is very clear that the log-transform of
+%the data provides a much better fit of the model.
+%This is easily accommodated using the \code{Transform}
+%argument to \code{BA.est}:
+<<echo=FALSE,results=hide>>=
+RRl <- BA.est(Ancona, linked = TRUE, random.raters = TRUE, Transform = "log")
+LoA.log.mn <- RRl$LoA[3] 
+mLoA <- exp(LoA.log.mn) 
+names(mLoA) <- "mult(mean)" 
+mLoA 
+@ %
+The limits of agreement for the log-transformed data is
+\Sexpr{formatC(LoA.log.mn,format="f",digits=2)}. Since this estimate
+is based on the standard deviations of the log-transformed data the
+estimated variance components essentially represent coefficients of
+variation, see \eg, \citet[chapter 9]{Carstensen.2010b}. To convert this
+to a sensible number applicable on the original (count) scale, we take
+the exponential function of these values to get a multiplicative
+factor.
+% Thus in the case of the log-transformed data the limits of
+% agreement will be a multiplicative factor, 
+%
+The limits of agreement on the log scale is
+$\pm$\Sexpr{formatC(LoA.log.mn,format="f",digits=2)}, so the ratio
+between the score from two raters (largest/smallest) is with 95\%
+probability less than  $\exp(\Sexpr{formatC(LoA.log.mn,format="f",digits=2)}) = \Sexpr{formatC(mLoA,format="f",digits=2)}$ for
+assessments of the number of points the same picture.
+
+
+%\subsubsection{Visualization of the LoA}
+We can illustrate the relationship between the two transformations
+(identity or log) by making a graph for converting between two random
+raters. The mean conversion line will necessarily be the identity
+line, so the plot will basically show envelopes of where we can expect
+to find observations. We add points from random pairs of raters so we can
+compare the estimated envelopes to the observed data.
+<<envelopes,fig=TRUE,echo=FALSE>>=
+par(mar = c(3, 3, 1, 1), mgp = c(3, 1, 0) / 1.6, las = 1)
+plot(NA, xlim = c(0, 200), ylim = c(0, 200),
+         xlab = "First rater in pair (Count)", ylab = "Second rater in pair (Count)",
+         xaxs = "i", yaxs = "i")
+abline(v = seq(0, 200, 10), h = seq(0, 200, 10), col = gray(0.8))
+for(pm in c(-1, 1)) {
+  abline(pm * LoA.mn, 1, lwd = 3, lty = 1, col = "black")
+  abline(0, exp(pm * LoA.log.mn), lwd = 3, lty = 3, col = "black")
+}
+for(i in sample(levels(Ancona$meth), 16)) {
+  for(j in sample(setdiff(levels(Ancona$meth), i), 1)) {
+    wd <- to.wide(subset(Ancona, meth %in% c(i, j)))
+    symb <- as.numeric(levels(wd$repl))[wd$repl]
+    ro <- sample(0:1, 1)
+    points(wd[,3 + ro], wd[,4 - ro], col = clrs[symb], pch = 15+symb, cex = 0.5)
+  }
+}
+@ %def    wd$repl
+
+% XXXX hertil
+Also note that the envelope based on the log-transformation is with
+straight lines because we have a model where the conversion between
+methods (raters) is forced to go through 0. The result is shown in
+Figure~\ref{fig:envelopes}, where it is clear, that the analysis based
+on the log-transformed data (limits shown with the dashed lines in
+Figure~\ref{fig:envelopes}) captures the variation and differences
+among raters much better than the untransformed data (the solid
+lines) for all count levels.
+\begin{figure}%[tb]
+  \centering
+  \includegraphics[width=0.8\textwidth]{Ancona-envelopes}
+  \caption{Visualization of the LoA from the Ancona data. The
+    solid lines are from a model using original count data, the dashed
+    lines from a model for log-transformed data.
+    %Dotted lines are from
+%    using the median to summarize the variances of the raters instead
+ %   of the mean (full lines).
+    The points are from 16 randomly chosen
+    pairs of raters.}
+\label{fig:envelopes}
+\end{figure}
+
+%We can of course show the same conversion on a plot of the differences
+%versus the averages; it is merely a $45^\circ$ rotation of the plot. The
+%conversion can be done using the \code{y2DA} function, which
+%converts pairs of observations to differences and averages. The result
+%is shown in Figure~\ref{fig:DA-envelopes}.
+%<<DA-envelopes,fig=TRUE>>=
+%par(mar = c(3, 3, 1, 1), mgp = c(3, 1, 0) / 1.6, las=1)
+%plot(NA, xlim = c(0, 200), ylim = c(-100, 100),
+%         xlab = "Average count", ylab = "Count difference", xaxs="i", yaxs="i")
+%abline(v = seq(0, 200, 10), h = seq(-100, 100, 10), col = gray(0.8))
+%for(pm in c(-1, 1)) {
+%  abline(pm * LoA.mn, 0, lwd = 2, lty = 1, col = "black")
+%  abline(0, y2DA(0, exp(pm * LoA.log.mn))[2], lwd = 2, lty = 1, col = "blue")
+%}
+%for (i in sample(levels(Ancona$meth), 16)) {
+%  for (j in sample(setdiff(levels(Ancona$meth), i), 1)) {
+%    wd <- to.wide( subset( Ancona, meth %in% c(i,j) ) )
+%    ro <- sample(0:1, 1)
+%    points((wd[, 3 + ro] + wd[, 4 - ro]) / 2,
+%            wd[, 3 + ro] - wd[, 4 - ro],
+%            col = clrs[wd$repl], pch = 16, cex = 0.5)
+%  }
+%}
+%@ % def
+%\begin{figure}[tb]
+%  \centering
+%  \includegraphics[width=0.8\textwidth]{Ancona-DA-envelopes}
+%  \caption{Visualization of the LoA from the Ancona data. The
+%    black lines are from a model using original count data, the blue
+%    lines from a model for log-transformed data. The points are
+%    observations from 16 randomly chosen pairs of raters, and the
+%    colouring of the points refer to the replicates.
+%  }
+%\label{fig:DA-envelopes}
+%\end{figure}
+
+
+
+\subsubsection{Repeatability}
+
+% \subsubsection{Additive effects}
+
+<<echo=FALSE,results=tex>>=
+library(xtable)
+mydat <- as.data.frame(matrix(c((2.8 * RR$VarComp[, "res"]), NA), ncol=3))
+colnames(mydat) <- NULL  #  rownames(RR$VarComp[, "res", drop=FALSE])
+myres <- xtable(mydat,
+         caption="Individual repeatability coefficients ($2.8\\sigma_m^2$) for the 17 different raters.",
+         label="ratertable")
+digits(myres) <- 1
+print(myres, include.rownames = FALSE, include.colnames = FALSE,
+      table.placement="t", 
+      caption.placement = 'top'
+)
+mean.repeat <- 2.8 * mean(RR$VarComp[, "res"])
+@
+
+The repeatability coefficient for rater $m$ is calculated as $2
+\times \sqrt{2 \sigma_m^2}\approx 2.8\sigma_m$ provided we assume
+exchangeability for the replicates.
+For the Ancona data the individual estimated repeatability coefficients on the
+original scale are the $17$ values shown in Table~\ref{ratertable} and
+the mean repeatability coefficient is
+\Sexpr{formatC(mean.repeat,format="f",digits=2)}.  Broadly speaking we
+can say that the repeatability of ``academic point-counters'' (such as
+represented by the course participants at the SISMEC conference in
+Ancona) is \Sexpr{formatC(mean.repeat,format="f",digits=2)} points,
+meaning that assessing the same picture twice by the same randomly
+chosen rater will
+produce two guesses closer than about 50 with probability 95\%.
+
+
+
+<<echo=FALSE,results=hide>>=
+RC <- 2 * sqrt(2 * (RR$VarComp[, "IxR"] ^ 2 + RR$VarComp[, "res"] ^ 2))
+linked.mean.repeat <- mean(RC)
+@
+
+
+
+If replicates are linked we should include the between-replicates
+variation in the calculation of the repeatability, if this variation
+is considered unavoidable (and universal) between replicates.  In the case of the
+Ancona experiment, it is debatable whether replicates consisting of
+showing a rotated version of the picture are replicates in the
+repeatability sense. But if this is considered so, then we should
+calculate the individual repeatability coefficients using
+\eqref{eq:linked-repeat} and compute the mean repeatability
+coefficient among raters which then becomes
+\Sexpr{formatC(linked.mean.repeat,format="f",digits=2)}.  The mean
+repeatability is virtually the same for the Ancona dataset whether we
+consider the replicates as exchangeable or as linked.
+
+% \subsubsection{Multiplicative effects}
+
+We saw that there was some indication that data was better described
+by a constant variance model for the log-transformed counts. In that
+case we should compute the repeatability on the multiplicative scale,
+\ie we should basically do the same calculations on the
+log-transformed data.  Again, these are (``expected'') upper limits of
+absolute differences of natural-log transformed data, so not readily
+interpretable. If we take the exponential of these, we will get upper
+limit of a 95\% prediction interval for the \emph{ratio} of the larger
+to the smaller rating between two replicates.
+<<echo=FALSE,results=hide>>=
+mean(2 * sqrt(2 * (RRl$VarComp[, "IxR"] ^ 2 + RRl$VarComp[, "res"] ^ 2)))
+wwww <- exp(mean(2 * sqrt(2 * (RRl$VarComp[, "IxR"] ^ 2 + RRl$VarComp[, "res"] ^ 2))))
+@ % def
+Hence, assessing the same picture twice by the same rater will on
+average produce guesses that are within a factor \Sexpr{formatC(wwww,format="f",digits=2)} of each other with
+probability 95\%.
+
+
+All computations shown here are available as a detailed \R script with
+additional comments at \\ \verb+www.biostatistics.dk/agreement/ancona.pdf+.

@@ -1,0 +1,113 @@
+\SweaveOpts{results=verbatim,keep.source=TRUE,include=FALSE,eps=FALSE,prefix.string=choco}
+
+% \usepackage[utf8]{inputenc}
+
+<<echo=FALSE,results=hide>>=
+library(SensoMineR)
+require(MethComp)
+data(hedochoc)
+choc <- reshape(hedochoc, direction="long", varying=list(1:222))
+colnames(choc) <- c("rater", "score", "item")
+Choc <- Meth(choc, meth=1, item=3, y=2)
+@
+
+Sensometrics is typically concerned with quantifying differences
+between a set of brands or products. The brands are typically scored
+on several features simultaneously, and the scores are aggregated or
+analyzed with a multivariate model. If we focus on just a single feature
+then the products or brands are the items and the consumers that rate
+the products are the raters. Note that the objective is different from
+traditional sensometrics: We are interested in evaluating how two
+randomly picked consumers rate the same product.
+
+The data used here refer to six varieties of chocolates sold in
+France. Each chocolate was evaluated on a structured scale from 0 to
+10, by 222 consumers, according to their liking (0) or disliking (10)
+\citep{SensoMineR}. For our purpose the six varieties of chocolate will
+act as items and the 222 consumers as raters and we treat the score as
+a continuous outcome. Each consumer has only rated each chocolate
+brand once so there are no replicates. The data can be found in the
+\pkg{SensoMineR} package for \R.
+
+An overview of the data can be seen from a violin plot of the scores
+for each item (chocolate brand) as shown in
+Figure~\ref{fig:choco-violin}.  The densities in
+Figure~\ref{fig:choco-violin} suggest that the consumers have very
+varying opinion on the chocolate scores for all the brands, and that
+there are no clear substantial difference in the brand scores. The
+plot also indicates that it may be problematic to get to random
+consumers to agree on the chocolate quality for any brand.
+
+
+<<violin,fig=TRUE,height=5,width=9,echo=FALSE>>=
+library(ggplot2)
+p <- ggplot(Choc, aes(factor(item), y), ylab="Chocolate brands", xlab="Consumer score")
+p + geom_violin(yName="Chocolate brands", xName="Consumer score") + geom_jitter(position=position_jitter(width=0.3, height=.1)) + coord_flip() + labs(y="Consumer score", x = "Chocolate brands")
+@
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{choco-violin}
+\caption{Illustration of the chocolate data. Each line shows a violin
+  plot and the actual scores for a particular chocolate brand. The
+  scores are shown with a slight jitter along the $x$ axis which is
+  why scores below 0 and above 10 appear in the plot.}
+\label{fig:choco-violin}
+\end{figure}
+
+% We can get estimates of the variance components using the
+% \code{BA.est} function on the \code{Meth} object \code{Ancona},
+% where the \code{random.raters} argument is set to \code{TRUE} in
+% order to consider methods/raters as random effects instead of fixed
+% effects:
+<<echo=FALSE,results=hide>>=
+# Do NOT run. Takes forever
+# res <- BA.est(Choc, linked=FALSE, random.raters=TRUE, varMxI=FALSE, lmecontrol=lmeControl(msMaxIter=30))
+load("chocres.rda") # Gives the result of the analysis
+res
+@ %def
+% XXXX skal det her med igen?
+% What is printed by the last command is merely the estimated variance
+% components using the model where the conversion between methods have
+% intercept is 0 and slope 1. 
+
+% is stored in the \code{LoA} element returned by
+% \code{BA.est}, so the limits are (which we save for later use)
+<<echo=FALSE,results=hide>>=
+res
+LoA.mn <- res$LoA[, 3]
+@ %
+
+The limits of agreement between two random consumers is
+\Sexpr{formatC(LoA.mn,format="f",digits=2)}. In other words there is a
+95\% probability that two randomly selected consumers differ less than
+\Sexpr{formatC(LoA.mn,format="f",digits=1)} points in their assessment
+of the score of a chocolate. Since the scores range from zero to ten
+the limits of agreement must be said to be very wide.
+
+
+% \subsubsection{Repeatability}
+
+
+<<choco-vars,fig=TRUE,height=5,width=9,echo=FALSE>>=
+hist(res$VarComp[,4]^2, xlab=expression(hat(sigma)[m]^2), main="", col="gray", breaks=0:18)
+@
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{choco-choco-vars}
+\caption{Individual repeatibility coefficients for the chocolate data.}
+\label{fig:choco-vars}
+\end{figure}
+
+<<echo=FALSE,results=hide>>=
+mean.repeat <- 2.8 * mean(res$VarComp[, "res"])
+@
+
+Figure~\ref{fig:choco-vars} shows the estimated individual residual
+standard deviation for each rater and it is clear that there is a
+substantial heterogeneity in the individual variances. Essentially we
+could compute the repeatability using
+\eqref{repeatability-coefficient} if we assume exchangeability, but
+since we have no actual replicates of measurements on the same item in
+this dataset we refrain from computing it.
+
+

@@ -1,0 +1,1060 @@
+\documentclass[aoas]{imsart}
+
+
+\usepackage{booktabs}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xspace}
+\usepackage[noae]{Sweave}
+\usepackage{natbib}
+
+\DefineVerbatimEnvironment{Sinput}{Verbatim}{fontshape=sl,fontsize=\footnotesize,baselinestretch=0.88}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}{fontsize=\footnotesize,baselinestretch=0.88}
+\DefineVerbatimEnvironment{Scode}{Verbatim}{fontshape=sl,fontsize=\footnotesize,baselinestretch=0.88}
+
+\newcommand{\V}{\operatorname{Var}}
+\newcommand{\E}{\operatorname{E}}
+\newcommand{\R}{\textsf{R}\@\xspace}
+\newcommand{\pkg}[1]{\texttt{#1}\@\xspace}
+\newcommand{\code}[1]{\texttt{#1}\@\xspace}
+\newcommand{\median}{\operatorname{median}}
+\newcommand{\ie}{\emph{i.e.}\@\xspace}
+\newcommand{\eg}{\emph{e.g.}\@\xspace}
+\newcommand{\sd}{s.d.}
+\newcommand{\bG}{\bold{G}}
+\newcommand{\bY}{\bold{Y}}
+
+\setkeys{Gin}{width=0.8\textwidth}
+
+
+\chardef\bslash=`\\ % p. 424, TeXbook
+\newcommand{\ntt}{\normalfont\ttfamily}
+\newcommand{\cn}[1]{{\protect\ntt\bslash#1}}
+%\newcommand{\pkg}[1]{{\protect\ntt#1}}
+%\let\fn\pkg
+%\let\env\pkg
+%\let\opt\pkg
+\hfuzz1pc % Don't bother to report overfull boxes if overage is < 1pc
+\newcommand{\envert}[1]{\left\lvert#1\right\rvert}
+\let\abs=\envert
+
+
+\arxiv{math.PR/0000000}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Statistical models for assessing
+  agreement in method comparison studies with 
+  heterogeneous random raters and replicate measurements}
+\runtitle{Agreement for heterogeneous random raters}
+% \thankstext{T1}{Footnote to the title with the `thankstext' command.}
+
+\begin{aug}
+  \author{\fnms{Claus Thorn}  \snm{Ekstrøm}\corref{asd}\thanksref{t2}
+    \ead[label=e1]{ekstrom@sund.ku.dk}}
+  \and
+  \author{\fnms{Bendix} \snm{Carstensen}\ead[label=e2]{bxc@steno.dk}}
+  \thankstext{t2}{To whom correspondance should be addressed.}
+
+  \runauthor{C. T. Ekstrøm et al.}
+
+  \affiliation{University of Copenhagen and Steno Diabetes Center}
+
+  \address{Biostatistics, Department of Public Health, \\ Øster  Farimagsgade 5B,
+    1014 Copenhagen, Denmark. \\ 
+          \printead{e1}}
+
+  \address{Steno Diabetes Center,\\ Niels Steensens Vej 2, 2820
+    Gentofte. \\
+          \printead{e2}}
+
+\end{aug}
+
+
+\begin{abstract}
+    Agreement between methods for quantitative measurements are
+  typically assessed by computing limits of agreement between pairs of
+  methods and/or by illustration through Bland-Altman plots. We
+  consider the situation where the observed measurement methods are
+  considered a random sample from a population of possible methods,
+  and discuss how the underlying linear mixed effects model can be
+  extended to this situation. This is relevant when, for example, the
+  methods represent raters/judges that are used to score specific
+  individuals or items. In the case of random methods, we are not
+  interested in estimates pertaining to the specific methods, but are
+  instead interested in quantifying the variation between the methods
+  actually involved making measurements, and accommodating this as an
+  extra source of variation when generalizing to the clinical
+  performance of a method. In the model we allow raters to have
+  individual precision/skill and permit linked replicates (\ie, when
+  the numbering, labeling or ordering of the replicates within items
+  is important). Applications involving estimation of the limits of
+  agreement for two datasets are shown: A dataset of spatial
+  perception among a group of students as well as a dataset on
+  consumer preference of French chocolate. The models are implemented
+  in the \pkg{MethComp} package for \R.
+\end{abstract}
+
+%\begin{keyword}[class=MSC]
+%\kwd[Primary ]{60K35}
+%\kwd{60K35}
+%\kwd[; secondary ]{60K35}
+%\end{keyword}
+
+\begin{keyword}
+\kwd{Agreement}
+\kwd{Limits of agreement}
+\kwd{Methods comparison}
+\kwd{Mixed models}
+\kwd{Random raters}
+\end{keyword}
+
+
+\end{frontmatter}
+
+
+
+%\keywords{Agreement; Limits-of agreement; Method comparison; Mixed models; Random raters\\
+%\noindent\hspace*{-4.2pc} Supporting Information for this article is available from the author or on the WWW under\break \hspace*{-4pc} \underline{http://www.biostatistics.dk/agreement/ancona.pdf}
+%}  %%% semicolon and fullpoint added here for keyword style
+
+%% Information for the first author.
+%\author{Claus Thorn Ekstr\o m \footnote{Corresponding author: {\textsf{e-mail: ekstrom@sund.ku.dk}}, Phone: +45-35327597, Fax: +45 3532 7907} \and Bendix Carstensen } 
+%\author{Claus Thorn Ekstr\o m\affil{a}\corrauth\ and
+%  Bendix Carstensen\affil{b}}
+
+%\address{\affilnum{a}Biostatistics, Department of
+%    Public Health, University of Copenhagen, Denmark\\
+%  \affilnum{b}Steno Diabetes Center, Denmark}
+
+%\corraddr{Claus T. Ekstrøm, Biostatistics, Department of
+%    Public Health, Øster  Farimagsgade 5B,
+%    1014 Copenhagen, Denmark. E-mail: \textsf{ekstrom@sund.ku.dk}}
+  
+%  $^1$ \footnote{Corresponding author: {\textsf{e-mail: ekstrom@sund.ku.dk}}, Phone: +45-35327597, Fax: +45 3532 7907} \and Bendix Carstensen$^2$ } 
+
+%\address[]{Biostatistics, Department of Public Health,
+%  University of Copenhagen, Øster  Farimagsgade 5B, 1014 Copenhagen, Denmark}
+%%%%    Information for the second author
+%\author[Carstensen]{Bendix Carstensen\inst{2}}
+%\address[\inst{2}]{Steno Diabetes Center,  Niels Steensens Vej 2, 2820
+%  Gentofte, Denmark}
+%%%%    \dedicatory{This is a dedicatory.}
+%\Receiveddate{zzz} \Reviseddate{zzz} \Accepteddate{zzz} 
+
+
+%% maketitle must follow the abstract.
+\maketitle                   % Produces the title.
+
+
+
+
+% \noindent\hspace*{-4.2pc} Supporting Information for this article is available from the author or on the WWW under\break \hspace*{-4pc} \texttt{http://www.biostatistics.dk/agreement/ancona.pdf}
+
+
+\section{Introduction}
+Comparison of methods for quantitative data is concerned with how well
+two methods agree on the measurement of an item. The interest is not
+on testing a hypothesis that the mean of the the two methods are
+identical, but on estimating the size and the standard deviation of
+the difference between them.
+
+Several authors have considered statistical models for assessing
+agreement with continuous measurements
+\citep{Barnhart2007,Rousson2002,BlanAltm:2007}.
+\citet{Carstensen.2008b} considered a mixed effect model for computing
+the prediction limits (often termed the \emph{limits of agreement})
+for designs with replicate measurements on each item. This approach
+provides a full statistical model that can compute the limits of
+agreement in the presence of replicate measurements instead of relying
+on summary measures. Moreover, it forces the investigator to focus on
+the nature of replicate measurements: are they exchangeable within
+each method by item stratum or only within items (\ie, the replicates
+are linked).
+
+Here we consider the situation where we are not interested in
+determining the bias and agreement between two \emph{specific} methods
+but are interested in the agreement between two random methods. Thus,
+the methods included in the study are regarded as a random sample of
+possible methods from a larger population of available methods; random
+methods are relevant, for example, when a group of judges/raters are
+asked to rate a set of items using a predetermined scale. This is a
+common occurrence for example when medical doctors are asked to give
+second or third opinions on measurements taken on patients. We are
+interested in how well medical doctors in general agree on the scoring
+of a particular condition, more so than determining how well specific
+doctors compare to each other. However, the agreement among random
+raters are not restricted to humans as measurement measurement
+methods. A similar approach can be used in combination with, say,
+machine learning where a large number of (random) regression trees
+are generated and we wish to compare how well two randomly selected
+regression trees predict the same value. Here the regression trees act
+as raters and we wish to investigate how well two randomly chosen trees agree.
+
+The focus on random raters (as opposed to fixed methods/raters) is not
+new and is a often found in relation to the calculation of intraclass
+correlation coefficients (ICC) for random factorial design
+\citep{Shoukri2010,Kilem2012}. However, they are typically concerned
+with estimating the ratio of the intraclass variation to the total
+variance. Here, our focus is on limits of agreement and we present a
+model that easily accommodates individual precision/skill for each
+rater and handles unbalanced designs where raters may rate different
+subsets of items.
+
+Limits of agreement estimated for random raters mimics the
+reproducibility coefficient  \citep{ISO1994}. The reproducibility
+coefficient includes the variability among different laboratories,
+when observations are carried out under reprocibility conditions at
+different laboratories. In that sense, the reproducibility coefficient
+also seeks to increase the variability by allowing the laboratories to
+be different, but again we wish to extend that concept to situations with
+individual skill levels and with unbalanced designs. 
+
+Section \ref{sec:model} sets up the necessary mixed effect model that
+accommodates random raters, and Section \ref{sec:replicate} extends
+the model to the situation where replicate measurements from the
+methods are available on each item. Section \ref{sec:repeatability}
+discusses repeatability while the model is applied to two datasets
+with random raters in Section \ref{sec:example}.
+
+\section{Models for agreement among random raters}
+\label{sec:model}
+
+The traditional setup for comparison of measurements methods is one
+where exactly one measurement is taken with each method on each item
+(here, `item' can refer to, for example, an individual, a sample, or
+an image). The limits of agreement for two methods are computed as the
+prediction interval for the difference between future measurements
+taken by the two methods on a new item or, equivalently as a
+prediction interval for a measurement on an item by method B, given a
+measurement by method A and \emph{vice versa}. The focus of such
+studies is typically the comparison (and possibly prediction) between
+a few specific methods of interest.
+
+When multiple raters are compared, the raters play the role of
+methods, but we are not necessarily interested in the difference between any two
+specific raters. Instead we consider each rater as a ``random'' rater/judge/expert
+from an (essentially infinite) population of raters. Thus, when we
+compute the prediction limits for the difference between measurements
+by two randomly chosen raters we should ensure that the variation
+between the random raters is taken into account in the modeling and
+that the variation is included in the computation of the prediction
+interval. The situation with random raters arises for example in
+medical situations where a medical doctor is asked to give a second
+opinion on the measurement from a patient.
+
+If we carry over the two-way analysis of variance model from the
+traditional Bland-Altman setup we model the value for a
+measurement taken on item $i$ by rater $m$ as:
+\begin{equation} \label{mod1}
+\begin{split}
+Y_{mi} &= \mu_i + b_m + e_{mi}, \\
+b_m &~ \sim N(0, \xi^2), \\
+e_{mi} &~ \sim N(0, \sigma^2),
+\end{split}
+\end{equation}
+where $\mu_i$ is the ``true'' value for item $i$, $b_m$ is a random
+effect that models a random bias for measurements taken by rater $m$,
+$\xi$ is the variation of biases between raters, and $\sigma$ is the
+individual variation of rater $m$
+\citep{Bland:Altman.1999,Carstensen.2008b}. Note that above we have
+implicitly assumed that the individual variation for each rater is the
+same --- we will relax this assumption below.
+
+The ``true'' value for item $i$ is of course arbitrary; a constant may
+be added to all $\mu_i$s provided it is subtracted from the $b_m$s;
+but since we have constrained the mean of the $b_m$s to be 0, the
+$\mu_i$s represent the average assessment of item $i$ by the set of
+raters at hand. Note that since the raters (or more precisely, the
+variation between them) is the focus of interest, the $\mu_i$s are
+essentially nuisance parameters. Even if only one measurement per
+rater and item is available it is possible to estimate all parameters
+in model \eqref{mod1}, so in order to produce limits of agreement for
+random raters in this simple setup we just need to estimate the mean rater-specific
+variation across raters.
+
+The limits of agreement for the difference between measurements taken
+by two random raters ($m$ and $m'$) on the same item corresponds to
+the prediction interval of the difference $Y_{mi} - Y_{m'i}$.  If
+measurements by different raters are assumed to be independent we get
+that the limits of agreement (prediction interval) for the
+difference between the two raters on a new item is
+\begin{equation}
+0 \pm z \sqrt{\V(Y_{mi} - Y_{m'i})} = 0 \pm z \sqrt{\V(Y_{mi}) + \V(Y_{m'i})},
+\end{equation}
+where $z$ is the quantile corresponding to the desired level of the
+prediction interval. Under model \eqref{mod1}, the 95\% limits of
+agreement simplifies to
+\begin{equation}
+  0 \pm 1.96 \times \sqrt{2\times(\xi^2 + \sigma^2)} \approx 0 \pm 2.8
+  \sqrt{\xi^2 + \sigma^2}. \label{eq:LoA1}
+\end{equation}
+In practice we will replace the parameters in \eqref{eq:LoA1} by their
+corresponding estimates. The value 1.96 can of course be replaced by
+a suitable quantile from the $t$ distribution; the normal convention
+is to use 2 (which incidentally is the 97.5\% quantile of the $t$
+distribution with 60 degrees of freedom). In the rest of this paper we
+shall use 2 for convenience.
+
+
+Model \eqref{mod1} can be extended to allow for raters to have
+different skill/precision such that some raters can be very precise
+(\ie, have low residual variation) while others can be less precise
+(\ie, have high residual variation). The value for a measurement taken
+on item $i$ by rater $m$ becomes
+\begin{equation} \label{mod2}
+\begin{split}
+Y_{mi} &= \mu_i + b_m + e_{mi}, \\
+b_m &~ \sim N(0, \xi^2), \\
+e_{mi} &~ \sim N(0, \sigma_m^2),
+\end{split}
+\end{equation}
+where $\sigma_m$ is the individual variation of rater $m$.  Allowing
+for heterogeneity among raters extends the traditional modeling and
+the variance for rater $m$ on item $i$ becomes
+\begin{eqnarray*}
+\V(Y_{mi}) & = & \xi^2 + \sigma_m^2
+\end{eqnarray*}
+where we let the individual residual variances, $\sigma_m^2$, follow
+some distribution of the residual variances which has support on the
+positive real numbers.
+%to account for the heterogeneity of variances between raters.
+Thus, the distribution of the residual variances is central for the
+prediction of differences between raters; it represents the
+distribution of ``skill'' among available raters.  If prior knowledge
+about the precision distribution is available then that information
+can be used to model the distribution of the residual variances.  In
+the following we assume that we have no prior knowledge about the
+precision and/or that we have too little information to be able to
+verify any distributional assumptions about the residual variances
+that we might have.
+
+The law of total variance provides the variance of a measurement from
+a \emph{randomly chosen rater} from the population when applied to a fixed
+item:
+\begin{equation}
+\begin{split}
+\V(Y_{mi}) &=  \V_\sigma\bigl(\E(Y_{mi}|\sigma_m^2)\bigr) +
+              \E_\sigma\bigl(\V(Y_{mi}|\sigma_m^2)\bigr) \\
+          &= \V_\sigma( \mu_i ) + \E_\sigma( \xi^2 + \sigma_m^2)\\
+          &= \xi^2 + \E_\sigma(\sigma_m^2).
+          \label{tot-var}
+\end{split}
+\end{equation}
+$E_\sigma$ and $\V_\sigma$ represent means and variances based on the
+underlying distribution of the residual variances.
+We can estimate the variance for a randomly chosen rater using the empirical counterpart of \eqref{tot-var}:
+%The empirical counterpart of \eqref{tot-var} is
+\begin{equation}
+  \begin{split}
+   \widehat{\xi^2} + \widehat{\E(\sigma_m^2)}
+   &\approx \widehat{\xi^2} + \frac 1M \sum_{m=1}^M \widehat{\sigma_m^2}
+  % \\
+ %  &\approx \hat{\xi}^2 + \left(\frac 1M \sum_{m=1}^M \hat{\sigma}_m\right)^2\\
+   \label{approximation}
+  \end{split}
+\end{equation}
+where $M$ is the number of raters available in the dataset.  Hence,
+the estimate for the 95\% limits of agreement between two randomly
+chosen raters becomes
+\begin{equation}
+  0 \pm 2 \times \sqrt{2\times\bigl( \widehat{\xi^2} +
+      \frac 1M \sum_{m=1}^M \widehat{\sigma_m^2}
+%      \median(\hat{\sigma}_m^2)
+      \bigr)}
+\end{equation}
+
+Equation~\ref{tot-var} states that the variance of a measurement by a
+randomly chosen rater is the sum of between rater variance and the
+average within-rater variance. The estimate relies heavily on the
+assumption that the sample of raters at hand is representative of the
+population of future raters. Moreover, the within-rater variation
+might be poorly determined if the number of raters in the study is
+small.
+
+
+
+Even without replicate measurements on each item it is possible to
+estimate the individual residual variance for each rater as long as
+each rater has scored at least two items, because model \eqref{mod1}
+by the very nature of the randomness of raters must impose an
+assumption of 0 average difference between raters. This means that the
+estimate of the single rater's variation is strongly dependent on the
+other raters' results, because it is essentially the variation around
+the common means ($\mu_i$).
+%
+It also emphasizes the crucial nature of the assumptions behind
+\emph{random} raters, a truly random sample of raters is required to
+ensure that the empirical means across the raters at hand is a fair
+approximation of the true population mean. To put it another way, the
+generalizations are only valid for a population of raters of which
+those in the sample at hand can be considered a random sample. And
+predictions of precision for future ratings also require that the
+sample of items for which the prediction is made is also a random
+sample of the population of items.
+
+
+
+
+The total variance for a random rater in the situation with
+homogeneous individual variances, $\xi^2+\sigma^2$, resembles the
+variance for a random rater in the situation with heterogeneous
+individuals variation, $\xi^2 + \E_\sigma(\sigma_m^2)$. However, we
+cannot generally use $\sigma^2$ as replacement for the mean individual
+rater variance $\E_\sigma(\sigma_m^2)$ and then just use the simpler
+homogeneous model, \eqref{mod1}, to estimate the variance
+components. If the design is balanced, \ie, all raters have scored the
+same number of items, then we can use \eqref{mod1} even in the
+heterogeneous case. If the design is unbalanced then it is necessary
+to estimate $\E_\sigma(\sigma_m^2)$ by $\frac 1M \sum_{m=1}^M
+\widehat{\sigma_m^2}$ since otherwise we give increased weight to
+  raters that have scored more items (see Figure~\ref{designs} for
+  examples). Model \eqref{mod1} can only replace \eqref{mod2} if each rater
+  has scored exactly the same number of items.
+ 
+
+\begin{figure}[tb]
+%  {\scriptsize
+    \begin{center}
+      \begin{tabular}{c@{\hspace*{.5cm}}cccccccccccccccccc} \toprule
+ & \multicolumn{5}{c}{I} & & \multicolumn{5}{c}{II} & &
+ \multicolumn{5}{c}{III} \\ \cmidrule{2-6} \cmidrule{8-12}
+ \cmidrule{14-18} 
+ & \multicolumn{5}{c}{Rater} & & \multicolumn{5}{c}{Rater} & &
+ \multicolumn{5}{c}{Rater} \\
+ Item & $A$ & $B$ & $C$ & $D$ & $E$ & & $A$ & $B$ & $C$ & $D$ & $E$ &  & $A$ & $B$ & $C$ & $D$ & $E$ \\ \cmidrule{2-6} \cmidrule{8-12}
+ \cmidrule{14-18} 
+    1 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ & $\bullet$ &  &  &  & & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  \\  
+    2 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ & $\bullet$ &  &  &  & & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  \\  
+    3 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  & $\bullet$ &  &  & & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  \\  
+    4 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  & $\bullet$ &  &  & & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  \\  
+    5 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  &  & $\bullet$ &  & & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ \\  
+    6 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  &  & $\bullet$ &  & & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ \\  
+    7 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  &  &  & $\bullet$ & & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ \\  
+    8 & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ &  &  &  & $\bullet$ & & $\bullet$ & $\bullet$ & $\bullet$ &  & $\bullet$ \\  
+\bottomrule 
+\end{tabular}
+      
+   \end{center}
+%  }
+  \caption{Examples of designs with 8 items and 5 random raters. A dot
+    indicates that an item was scored by the rater. I) Balanced design
+    where each rater scores every item. II) ``Teacher design'' where a
+    single expert, $A$, scores every item while trainees (raters
+    $B$--$E$) each score a few items. III) ``Chief phycisians design''
+    where a large number of medical students (raters $A$--$C$)
+    examines every item/patient while a smaller group of chief phycisians
+    (raters $D$--$E$) oversee the students as they do the rounds.}
+  \label{designs}
+\end{figure}
+
+
+% {\footnotesize
+% The model \eqref{mod1} is a two-way analysis of variance
+% model with random row (\ie, \texttt{meth}-) effect. The simple version
+% with identical residual variances between methods can be fitted with
+% either \texttt{lmer} or \texttt{lme}, whereas there is no facility for
+% stratum-specific variances implemented in \texttt{lmer}, \texttt{lme}
+% must be used:
+% <<>>=
+% library( MethComp )
+% data( Ancona )
+% Ancona <- Meth( Ancona, 1,2,3,4 )
+% library(lme4)
+% print( lmer( y ~ item - 1 + (1|meth),
+%              data=subset(Ancona,repl==1) ),
+%        correlation=FALSE )
+% print( lme( y ~ item - 1, random = ~ 1|meth,
+%             data=subset(Ancona,repl==1) ) )
+% print( lme( y ~item-1, random = ~1|meth,
+%             weights = varIdent( form=~1|meth ),
+%             data=subset(Ancona,repl==1) ) )
+% @
+% }
+
+% When we wish to compare the agreement between two \emph{random} raters
+% we need to take the variation in the individual rater precisions into
+% account since we do not know which particular two raters we will
+% use.
+
+%Now, the outer variances and expectations might as well be computed under
+%the distribution of $\sigma_m^2$ as under $\sigma_m$.
+%So by this token, the empirical counterpart of this results can be either of:
+
+\section{Models for agreement among random raters with multiple
+  measurements}
+\label{sec:replicate}
+
+It is not uncommon to have situations where multiple measurements by
+each rater on some items are available \citep{BlanAltm:2007}. Multiple
+measurements for combinations of raters and items makes it possible to
+estimate the repeatability of a random rater and provides better
+estimates of the individual residual variations $\sigma_m^2$.
+
+As mentioned above, even if raters are measuring each item only once,
+we can still estimate the residual variation of each rater from model
+\eqref{mod2}; it will simply be the variation around the common
+item-means. This is where the situation with random raters differs
+from comparing specific measurement methods. Because raters are
+considered random, we must necessarily assume that the mean difference
+between two raters is 0, and by that token that any deviation from 0
+is random.  This means that the implicit assumption of randomly chosen
+raters is heavily exploited in the case without replicate
+measurements.
+
+To assess the variability of the \emph{precision} of a random rater
+it is mandatory to have multiple measurements of each rater for some
+item(s); in that case observations are classified by replicate too, so
+we need a more elaborate model.
+
+If multiple measurements by each rater on an item exist then we can
+use the following extension of the model \eqref{mod2} for the $r$th
+measurement by rater $m$ on item $i$:
+\begin{equation}
+\begin{split}
+Y_{mir} &= \mu_i + b_m + a_{ir} + c_{mi} + e_{mir}, \\
+b_m &~ \sim N(0, \xi^2) \\
+a_{ir} &~ \sim N(0, \omega^2) \\
+c_{mi} &~ \sim N(0, \tau_m^2) \\
+e_{mir} &~ \sim N(0, \sigma_m^2)\\ \label{mod-linked}
+\end{split}
+\end{equation}
+Note that two new variance components have been added relative to the
+simple model in Equation~\ref{mod2} and that $\mu_i$ is still fixed
+since agreement is concerned with the variation in scores of one
+specific new item. The first variance component, $\omega$, is the
+variation between replication instances; as such it is in principle
+irrelevant for the comparison of raters.  The second, $\tau_m$, is the
+variation between items within each method --- a rater-specific
+interaction with the items. It represents the variability of a rater
+across items; that is how a specific rater's measurements varies
+relative to the \emph{average} measurement by all raters on a given
+item. Thus, this is a variance component whose size for the individual
+rater is very strongly tied to the concept of randomly chosen raters,
+in the sense that the estimates of $\tau_m$ will depend on the sample
+of raters to a much larger degree than will the estimates of
+$\sigma_m$ which are entirely estimates of the individual rater's
+variation around his own measurement mean.
+
+For situations with multiple measurements by each rater we can follow
+the same arguments that led to \eqref{eq:LoA1} and get limits of
+agreement between two randomly chosen raters as:
+\begin{equation}
+  \begin{split}
+   0 \pm 2 & \times \sqrt{2\times\left( \hat{\xi}^2 +
+      \frac 1M \sum_{m=1}^M (\hat{\tau}_m^2 + \hat{\sigma}_m^2)
+                     \right)}
+%  \\
+%   0 \pm 2 & \times \sqrt{2\times\left( \hat{\xi}^2
+%                       + \median( \hat{\tau}_m^2 ) +
+%                        \median(\hat{\sigma}_m^2)\right)} \\
+  \end{split}.
+  \label{eq:LoA-linked}
+\end{equation}
+where we have taken the average item-by-rater variation between raters
+into account. Note that the measurements by different methods are no longer
+independent because of the term $a_{ir}$ but these terms
+cancel out when computing $\V(Y_{mir}-Y_{m'ir})$, because indices $i$ and
+$r$ are identical for the two terms.
+
+However, repeated measurements come in two guises: exchangeable and
+linked \citep{BlanAltm:2007,Carstensen.2008b}. 
+%If the repeated
+%observations on an item generally do not vary then they are
+%\emph{exchangeable} and repeated observations of an item can
+%essentially be freely exchanged and will give the same
+%result. 
+Exchangeable observations arise if the order of the
+observations for a given combination of rater and item is
+irrelevant. In model \eqref{mod2} this corresponds to having
+$\omega^2=0$ since there is no common variation within items from replicate to replicate.
+
+%Conversely, if the order of the repeated observation taken by a rater
+%on a specific item matters then we say that the replicates are
+%\emph{linked}. 
+
+Replicates are \emph{linked} if the first replicate by all raters are
+made at the same time (or under similar circumstances), and if the
+second replicate by all raters are made at the same time too,
+etc. This means that the \emph{numbering} (but not necessarily the
+\emph{ordering}) of the replicates carries some information about
+similar circumstance of the measurement. Linked replicates occur,
+for example, when the measurements are taken over a longer period of
+time, or if there is some inherent ``memory'' in the raters (\ie, they
+can remember earlier scores on the same item). Linked repeated
+observations correspond to having $\omega^2>0$.
+%, or more generally
+%having the item by replicate means equal to .
+
+Formula \eqref{eq:LoA-linked} is used to estimate limits of agreement
+for both exchangeable and linked repeated observations. However, for
+exchangeable repeated observations we fit model \eqref{mod2} without
+the variance component $\omega^2$ and thus the two setups might result
+in different limits of agreement despite using the same formula.
+
+
+
+%Replicates are called
+%\emph{exchangeable} if this is not the case, that is if replicate
+%numbering can be freely exchanged within a given combination of
+%$(m,i)$.
+
+
+
+\section{Repeatability}
+\label{sec:repeatability}
+
+The limits of agreement are not always the only issue of interest ---
+the assessment of repeatability and reproducibility for either a specific or
+randomly chosen rater
+may be of interest in their own right. In particular, if a rater has
+large variation between replicates on the same item then the
+repeatability and agreement with other raters will be poor.
+Repeatability can only be assessed when multiple measurements on the
+same item by each
+rater are available.
+
+In typical assessment of \emph{specific} raters, the repeatability
+coefficient for a method is defined as the upper limit of a prediction
+interval for the absolute difference between two measurements by the
+same rater on the same item under identical circumstances. 
+
+When replicates are exchangeable, the difference between two replicate
+measurements, $r$ and $r'$ taken by rater $m$ on item $i$ is
+\begin{equation}
+ Y_{mir} - Y_{mir'} = e_{mir}- e_{mir'}
+\end{equation}
+so the repeatability is based only on the residual standard deviation,
+\ie, $2.8\sigma_m$. For linked replicates this difference becomes
+\begin{equation}
+ Y_{mir} - Y_{mir'} = a_{ir}- a_{ir'}  + e_{mir}- e_{mir'}, \label{eq:linked-repeat}
+\end{equation}
+and the variation between replicates taken on the same item should be
+factored into the calculation of the repeatability coefficient which
+then becomes $2.8\sqrt{\omega^2 +\sigma_m^2}$. Note that these two
+results are conditional on rater $m$ since we considered specific raters.
+
+
+In the case of \emph{random} raters, the repeatability coefficient has a
+slightly different meaning because we cannot hinge it on estimates of
+variances from any specific rater --- they will just be a random set
+of variances. Instead the repeatability must refer to the
+average/expected repeatability, or even, if we cling to the traditional
+definition, the variability of the repeatability as we may expect to
+see it in a sample of raters.
+
+Thus for exchangeable replicates we get that the repeatability is 
+$$ %\begin{equation]
+    E_\sigma(2.8\sigma_m)    
+$$ %\end{equation}
+which is estimated by
+\begin{equation}
+    2.8\frac{1}{M}\sum_{m=1}^M\widehat{\sigma_m}, \label{repeatability-coefficient}
+\end{equation}
+when raters are allowed to have different variances and as $2.8
+\sigma$, otherwise.  Likewise, for linked replicates we get
+\begin{equation}
+    2.8\frac{1}{M}\sum_{m=1}^M\sqrt{\widehat{\omega^2} + \widehat{\sigma_m^2}}.
+\end{equation}
+
+
+
+% A small repeatability coefficient corresponds to good
+% repeatability (\ie, little variation among replicates) while a large
+% repeatability coefficient corresponds to poor repeatability.
+%Thus, if the standard deviation of a measurement is $\sigma$ then the
+%repeatability coefficient becomes $2 \times \sqrt{2\sigma^2} \approx 2.8
+%\sigma$.
+
+
+The latter argument assumes that the variability between replication
+occasions can be considered representative of future scenarios.  If
+the replicates are taken under substantially different circumstances,
+then the variance component $\omega$ may be considered irrelevant for
+the repeatability and the repeatability coefficient should be based on
+the measurement errors alone, \ie, use
+$2.8\frac{1}{M}\sum_{m=1}^M\widehat{\sigma_m}$.  However, if indeed the
+replicates are taken under substantially different circumstances it
+may be argued that we are not really measuring the same item
+repeatedly. Instead the effects of differing replication circumstances
+could be modeled by a systematic effect. Hence there is no
+subject-matter-free way of defining repeatability from the variance
+components in the models.
+
+%Thus, repeatability varies between raters too, and in the case of
+%random raters essentially only the median of these makes sense as a
+%summary estimate --- half of the times one will have a rater with
+%better repeatability, half of the times one with worse.
+
+%\textsf{XXX : Jeg vil egentlig hellere skrive nedenstående. Måske er
+% det bare fordi jeg ikke helt forstår argumentet ovenfor. Hvis vi
+% vælger helt at fjerne medianen skal vi også huske at rette koden til
+% i repeatabilityafsnittet i Ancona.Rnw:
+%Thus, repeatability varies between raters too, so the mean of the
+%repeatability coefficients makes sense as a summary estimate (even
+%though the mean coefficient may not coincide with that of any
+%particular rater found in the dataset).
+%}
+% \clearpage
+
+\section{Example applicaitons}
+\label{sec:example}
+
+
+\subsection{Spatial perception of point swarms}
+
+Some people have keen spatial perception and are able to almost
+instantaneous\-ly give a reasonable guess of, for example, the number of
+individuals in a crowd. We collected data on spatial perception from
+participants attending a course on comparison of measurement
+methods. Thus, we will use attendees of the course as a random
+selection of raters and will try to determine how well two random
+raters agree on assessing the number of points in a point swarm.
+
+% \input{Ancona}
+
+
+% \usepackage[utf8]{inputenc}
+
+
+
+% \subsection{The dataset}
+Ten pictures of scattered points were generated, and the purpose of
+the exercise was to estimate the number of points in each picture
+after having viewed the picture for 5 seconds.  The number of points
+in each picture were between 24 and 120. Each picture were shown to
+the 17 raters three times (rotated and in random order to prevent
+recollection of the pictures), without telling them about the
+replication structure.  The dataset is available as the dataset
+\code{Ancona} (collected at a pre-confe\-rence course at the VIth
+conference of Societ\`{a} Italiana di Statistica Medica ed
+Epidemiologia Clinica (SISMEC) held in September 2011 in Ancona,
+Italy) found in the \pkg{MethComp} package for \R.
+
+
+
+
+We can get an overview of the data by plotting scores of the raters
+(and the replicates within raters) for each item (picture) as shown in
+Figure~\ref{fig:ancona-data}, separately for original scale and
+log-transformed data.  The plots in Figure~\ref{fig:ancona-data}
+provided pretty clear indications that a log-transform might provide a
+better fit to the data, since the variances are increasing for the
+analysis on the original scale, but largely stable for the
+log-transformed.
+
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{Ancona-xyplot-lin}
+\includegraphics[width=0.9\textwidth]{Ancona-xyplot-log}
+\caption{Illustration of the Ancona data. Each panel shows a specific
+  item and the columns of dots within each panel represent the scores
+  given by each rater (with the true number of points listed above
+  each panel). The symbols/colouring corresponds to replicates (with
+  circles, triangles, and diamonds corresponding to first to third
+  replicate, respectively). Raters are listed in the same order within
+  all panels and are sorted according to their average log-score
+  across all items and replicates. The upper graph shows counts on the
+  original scale, the lower after log-transform. It appears that
+  variances are reasonably homogeneous in the lower panels, but not in
+  the upper. The solid horizontal lines correspond to the mean score
+  within replicates, the dashed line to the true number of points.}
+\label{fig:ancona-data}
+\end{figure}
+
+% We can get estimates of the variance components using the
+% \code{BA.est} function on the \code{Meth} object \code{Ancona},
+% where the \code{random.raters} argument is set to \code{TRUE} in
+% order to consider methods/raters as random effects instead of fixed
+% effects:
+% XXXX skal det her med igen?
+% What is printed by the last command is merely the estimated variance
+% components using the model where the conversion between methods have
+% intercept is 0 and slope 1. 
+
+% is stored in the \code{LoA} element returned by
+% \code{BA.est}, so the limits are (which we save for later use)
+
+Using formula \eqref{eq:LoA-linked} we get that the limits of agreement between two
+random raters is $\pm$68.02, thus
+there is a 95\% probability that two randomly selected raters differ
+less than 68 points in their
+assessment --- not impressive since the range of values are from 24 to
+120.
+
+
+
+% If we wish to use the median of the variance components instead of the
+% mean to get a more robust estimate of the limits of agreement then we
+% have to extract the median of the relevant variance components and
+% use them together with formula \eqref{eq:LoA-linked}. We also make the
+% computations using the mean, illustrating the calculation of the LoA
+% embedded in \texttt{BA.est}:
+% <<>>=
+% ( RRmd <- apply( RR$VarComp, 2, median ) )
+% sqmean <- function( x ) sqrt(mean(x^2))
+% ( RRmn <- apply( RR$VarComp, 2, sqmean ) )
+% @ %def
+% According to formula \eqref{eq:LoA-linked} we get the LoA as plus/minus:
+% <<>>=
+% ( LoA.md <- 2 * sqrt( 2 * ( RRmd["M"  ]^2 +
+%                             RRmd["MxI"]^2 +
+%                             RRmd["res"]^2 ) ) )
+% ( LoA.mn<- 2 * sqrt( 2 * ( RRmn["M"  ]^2 +
+%                             RRmn["MxI"]^2 +
+%                             RRmn["res"]^2 ) ) )
+% @ %def
+% We get slightly smaller limits of agreement when we use the
+% median of the estimated variance components instead of the mean.
+
+% \subsubsection{Log-transformed data}
+
+%This can be visualized by using the \code{DA.reg} function to make
+%regressions of the averages on the means (assuming intercept and slope
+%to be 0, thus essentially looking at the differences within all pairs
+%of raters).
+%<<trsf,fig=TRUE,height=5,width=10>>=
+%par(mfrow = c(1, 2), mar = c(3, 3, 1, 1), mgp = c(3, 1, 0) / 1.6)
+%oo <- DA.reg(Ancona, random.raters = TRUE)
+%ll <- DA.reg(Ancona, random.raters = TRUE, Transform = "log")
+%
+%lims <- range(c(oo$Conv[, , "slope(sd)"], ll$Conv[, , "slope(sd)"]), na.rm = TRUE)
+%plot(oo$Conv[, , "slope(sd)"], ll$Conv[, , "slope(sd)"],
+%     pch = 16, xlim = lims, ylim = lims,
+%     xlab = "original", ylab = "log-transformed")
+%mtext("Slope of SD vs. mean", side = 3, line = 0.2)
+%abline(h = 0, v = 0)
+%
+%plot(oo$Conv[, , "sd=K"], ll$Conv[, , "sd=K"],
+%     pch = 16, xlim = 0:1, ylim = 0:1,
+%     xlab = "original", ylab = "log-transformed")
+%mtext("P-value for constant SD", side = 3, line = 0.2)
+%@
+%\begin{figure}[tb]
+%  \centering
+%  \includegraphics[width=0.98\textwidth]{Ancona-trsf}
+%  \caption{Checking the effect of transformation. Left panel: Slopes
+%    of the regression of SD on averages. Right
+%    panel $p$-values of $H_0: \text{slope}=0$ for the regression.}
+%\label{fig:trsf}
+%\end{figure}
+%From Figure \ref{fig:trsf} it is very clear that the log-transform of
+%the data provides a much better fit of the model.
+%This is easily accommodated using the \code{Transform}
+%argument to \code{BA.est}:
+The limits of agreement for the log-transformed data is
+1.01. Since this estimate
+is based on the standard deviations of the log-transformed data the
+estimated variance components essentially represent coefficients of
+variation, see \eg, \citet[chapter 9]{Carstensen.2010b}. To convert this
+to a sensible number applicable on the original (count) scale, we take
+the exponential function of these values to get a multiplicative
+factor.
+% Thus in the case of the log-transformed data the limits of
+% agreement will be a multiplicative factor, 
+%
+The limits of agreement on the log scale is
+$\pm$1.01, so the ratio
+between the score from two raters (largest/smallest) is with 95\%
+probability less than  $\exp(1.01) = 2.75$ for
+assessments of the number of points the same picture.
+
+
+%\subsubsection{Visualization of the LoA}
+We can illustrate the relationship between the two transformations
+(identity or log) by making a graph for converting between two random
+raters. The mean conversion line will necessarily be the identity
+line, so the plot will basically show envelopes of where we can expect
+to find observations. We add points from random pairs of raters so we can
+compare the estimated envelopes to the observed data.
+
+% XXXX hertil
+Also note that the envelope based on the log-transformation is with
+straight lines because we have a model where the conversion between
+methods (raters) is forced to go through 0. The result is shown in
+Figure~\ref{fig:envelopes}, where it is clear, that the analysis based
+on the log-transformed data (limits shown with the dashed lines in
+Figure~\ref{fig:envelopes}) captures the variation and differences
+among raters much better than the untransformed data (the solid
+lines) for all count levels.
+\begin{figure}%[tb]
+  \centering
+  \includegraphics[width=0.8\textwidth]{Ancona-envelopes}
+  \caption{Visualization of the LoA from the Ancona data. The
+    solid lines are from a model using original count data, the dashed
+    lines from a model for log-transformed data.
+    %Dotted lines are from
+%    using the median to summarize the variances of the raters instead
+ %   of the mean (full lines).
+    The points are from 16 randomly chosen
+    pairs of raters.}
+\label{fig:envelopes}
+\end{figure}
+
+%We can of course show the same conversion on a plot of the differences
+%versus the averages; it is merely a $45^\circ$ rotation of the plot. The
+%conversion can be done using the \code{y2DA} function, which
+%converts pairs of observations to differences and averages. The result
+%is shown in Figure~\ref{fig:DA-envelopes}.
+%<<DA-envelopes,fig=TRUE>>=
+%par(mar = c(3, 3, 1, 1), mgp = c(3, 1, 0) / 1.6, las=1)
+%plot(NA, xlim = c(0, 200), ylim = c(-100, 100),
+%         xlab = "Average count", ylab = "Count difference", xaxs="i", yaxs="i")
+%abline(v = seq(0, 200, 10), h = seq(-100, 100, 10), col = gray(0.8))
+%for(pm in c(-1, 1)) {
+%  abline(pm * LoA.mn, 0, lwd = 2, lty = 1, col = "black")
+%  abline(0, y2DA(0, exp(pm * LoA.log.mn))[2], lwd = 2, lty = 1, col = "blue")
+%}
+%for (i in sample(levels(Ancona$meth), 16)) {
+%  for (j in sample(setdiff(levels(Ancona$meth), i), 1)) {
+%    wd <- to.wide( subset( Ancona, meth %in% c(i,j) ) )
+%    ro <- sample(0:1, 1)
+%    points((wd[, 3 + ro] + wd[, 4 - ro]) / 2,
+%            wd[, 3 + ro] - wd[, 4 - ro],
+%            col = clrs[wd$repl], pch = 16, cex = 0.5)
+%  }
+%}
+%@ % def
+%\begin{figure}[tb]
+%  \centering
+%  \includegraphics[width=0.8\textwidth]{Ancona-DA-envelopes}
+%  \caption{Visualization of the LoA from the Ancona data. The
+%    black lines are from a model using original count data, the blue
+%    lines from a model for log-transformed data. The points are
+%    observations from 16 randomly chosen pairs of raters, and the
+%    colouring of the points refer to the replicates.
+%  }
+%\label{fig:DA-envelopes}
+%\end{figure}
+
+
+
+\subsubsection{Repeatability}
+
+% \subsubsection{Additive effects}
+
+% latex table generated in R 3.2.3 by xtable 1.8-0 package
+% Tue Jan  5 15:23:02 2016
+\begin{table}[t]
+\centering
+\caption{Individual repeatability coefficients ($2.8\sigma_m^2$) for the 17 different raters.} 
+\label{ratertable}
+\begin{tabular}{rrr}
+  \hline
+  \hline
+33.9 & 29.5 & 46.6 \\ 
+  30.9 & 48.0 & 43.8 \\ 
+  57.7 & 36.2 & 122.4 \\ 
+  34.8 & 52.9 & 53.7 \\ 
+  52.4 & 23.6 & 88.0 \\ 
+  46.2 & 41.5 &  \\ 
+   \hline
+\end{tabular}
+\end{table}
+The repeatability coefficient for rater $m$ is calculated as $2
+\times \sqrt{2 \sigma_m^2}\approx 2.8\sigma_m$ provided we assume
+exchangeability for the replicates.
+For the Ancona data the individual estimated repeatability coefficients on the
+original scale are the $17$ values shown in Table~\ref{ratertable} and
+the mean repeatability coefficient is
+49.53.  Broadly speaking we
+can say that the repeatability of ``academic point-counters'' (such as
+represented by the course participants at the SISMEC conference in
+Ancona) is 49.53 points,
+meaning that assessing the same picture twice by the same randomly
+chosen rater will
+produce two guesses closer than about 50 with probability 95\%.
+
+
+
+
+
+
+If replicates are linked we should include the between-replicates
+variation in the calculation of the repeatability, if this variation
+is considered unavoidable (and universal) between replicates.  In the case of the
+Ancona experiment, it is debatable whether replicates consisting of
+showing a rotated version of the picture are replicates in the
+repeatability sense. But if this is considered so, then we should
+calculate the individual repeatability coefficients using
+\eqref{eq:linked-repeat} and compute the mean repeatability
+coefficient among raters which then becomes
+50.23.  The mean
+repeatability is virtually the same for the Ancona dataset whether we
+consider the replicates as exchangeable or as linked.
+
+% \subsubsection{Multiplicative effects}
+
+We saw that there was some indication that data was better described
+by a constant variance model for the log-transformed counts. In that
+case we should compute the repeatability on the multiplicative scale,
+\ie we should basically do the same calculations on the
+log-transformed data.  Again, these are (``expected'') upper limits of
+absolute differences of natural-log transformed data, so not readily
+interpretable. If we take the exponential of these, we will get upper
+limit of a 95\% prediction interval for the \emph{ratio} of the larger
+to the smaller rating between two replicates.
+Hence, assessing the same picture twice by the same rater will on
+average produce guesses that are within a factor 2.08 of each other with
+probability 95\%.
+
+
+All computations shown here are available as a detailed \R script with
+additional comments at \\ \verb+www.biostatistics.dk/agreement/ancona.pdf+.
+
+
+\subsection{Consumer evaluation of chocolate}
+
+
+% \usepackage[utf8]{inputenc}
+
+
+Sensometrics is typically concerned with quantifying differences
+between a set of brands or products. The brands are typically scored
+on several features simultaneously, and the scores are aggregated or
+analyzed with a multivariate model. If we focus on just a single feature
+then the products or brands are the items and the consumers that rate
+the products are the raters. Note that the objective is different from
+traditional sensometrics: We are interested in evaluating how two
+randomly picked consumers rate the same product.
+
+The data used here refer to six varieties of chocolates sold in
+France. Each chocolate was evaluated on a structured scale from 0 to
+10, by 222 consumers, according to their liking (0) or disliking (10)
+\citep{SensoMineR}. For our purpose the six varieties of chocolate will
+act as items and the 222 consumers as raters and we treat the score as
+a continuous outcome. Each consumer has only rated each chocolate
+brand once so there are no replicates. The data can be found in the
+\pkg{SensoMineR} package for \R.
+
+An overview of the data can be seen from a violin plot of the scores
+for each item (chocolate brand) as shown in
+Figure~\ref{fig:choco-violin}.  The densities in
+Figure~\ref{fig:choco-violin} suggest that the consumers have very
+varying opinion on the chocolate scores for all the brands, and that
+there are no clear substantial difference in the brand scores. The
+plot also indicates that it may be problematic to get to random
+consumers to agree on the chocolate quality for any brand.
+
+
+\begin{figure}%[tbp]
+  \centering
+\includegraphics[width=0.9\textwidth]{choco-violin}
+\caption{Illustration of the chocolate data. Each line shows a violin
+  plot and the actual scores for a particular chocolate brand. The
+  scores are shown with a slight jitter along the $x$ axis which is
+  why scores below 0 and above 10 appear in the plot.}
+\label{fig:choco-violin}
+\end{figure}
+
+% We can get estimates of the variance components using the
+% \code{BA.est} function on the \code{Meth} object \code{Ancona},
+% where the \code{random.raters} argument is set to \code{TRUE} in
+% order to consider methods/raters as random effects instead of fixed
+% effects:
